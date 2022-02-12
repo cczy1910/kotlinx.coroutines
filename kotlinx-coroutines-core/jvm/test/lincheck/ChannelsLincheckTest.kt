@@ -18,28 +18,28 @@ import org.jetbrains.kotlinx.lincheck.paramgen.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 
-class RendezvousChannelLincheckTest : ChannelLincheckTestBase(
+class RendezvousChannelLincheckTest : ChannelLincheckTestBaseWithOnSend(
     c = Channel(RENDEZVOUS),
     sequentialSpecification = SequentialRendezvousChannel::class.java
 )
 class SequentialRendezvousChannel : SequentialIntChannelBase(RENDEZVOUS)
 
-class Buffered1ChannelLincheckTest : ChannelLincheckTestBase(
+class Buffered1ChannelLincheckTest : ChannelLincheckTestBaseWithOnSend(
     c = Channel(1),
     sequentialSpecification = SequentialBuffered1Channel::class.java
 )
-class Buffered1BroadcastChannelLincheckTest : ChannelLincheckTestBaseWithoutOnSend(
+class Buffered1BroadcastChannelLincheckTest : ChannelLincheckTestBase(
     c = ChannelViaBroadcast(BroadcastChannelImpl(1)),
     sequentialSpecification = SequentialBuffered1Channel::class.java,
     obstructionFree = false
 )
 class SequentialBuffered1Channel : SequentialIntChannelBase(1)
 
-class Buffered2ChannelLincheckTest : ChannelLincheckTestBase(
+class Buffered2ChannelLincheckTest : ChannelLincheckTestBaseWithOnSend(
     c = Channel(2),
     sequentialSpecification = SequentialBuffered2Channel::class.java
 )
-class Buffered2BroadcastChannelLincheckTest : ChannelLincheckTestBaseWithoutOnSend(
+class Buffered2BroadcastChannelLincheckTest : ChannelLincheckTestBase(
     c = ChannelViaBroadcast(BroadcastChannelImpl(2)),
     sequentialSpecification = SequentialBuffered2Channel::class.java,
     obstructionFree = false
@@ -71,7 +71,7 @@ abstract class ChannelLincheckTestBaseAllLinearizable(
     c: Channel<Int>,
     sequentialSpecification: Class<*>,
     obstructionFree: Boolean = true
-) : ChannelLincheckTestBase(c, sequentialSpecification, obstructionFree) {
+) : ChannelLincheckTestBaseWithOnSend(c, sequentialSpecification, obstructionFree) {
     @Operation
     override fun trySend(value: Int) = super.trySend(value)
     @Operation
@@ -80,11 +80,11 @@ abstract class ChannelLincheckTestBaseAllLinearizable(
     override fun isEmpty() = super.isEmpty()
 }
 
-abstract class ChannelLincheckTestBase(
+abstract class ChannelLincheckTestBaseWithOnSend(
     c: Channel<Int>,
     sequentialSpecification: Class<*>,
     obstructionFree: Boolean = true
-) : ChannelLincheckTestBaseWithoutOnSend(c, sequentialSpecification, obstructionFree) {
+) : ChannelLincheckTestBase(c, sequentialSpecification, obstructionFree) {
     @Operation(allowExtraSuspension = true)
     suspend fun sendViaSelect(@Param(name = "value") value: Int): Any = try {
         select<Unit> { c.onSend(value) {} }
@@ -97,7 +97,7 @@ abstract class ChannelLincheckTestBase(
     Param(name = "value", gen = IntGen::class, conf = "1:9"),
     Param(name = "closeToken", gen = IntGen::class, conf = "1:9")
 )
-abstract class ChannelLincheckTestBaseWithoutOnSend(
+abstract class ChannelLincheckTestBase(
     protected val c: Channel<Int>,
     private val sequentialSpecification: Class<*>,
     private val obstructionFree: Boolean = true
